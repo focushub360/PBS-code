@@ -64,6 +64,12 @@ const corsOptions = {
 app.use(cors(corsOptions))
 app.use(express.json())
 
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Pawn Billing Backend Running Successfully'
+  });
+});
+
 // Connect to database
 connectDB()
 
