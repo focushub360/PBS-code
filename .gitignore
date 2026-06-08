@@ -1,0 +1,5 @@
+frontend-billing-v1-main/node_modules
+backend-billing-v1-main/node_modules
+
+frontend-billing-v1-main/.env
+backend-billing-v1-main/.env
