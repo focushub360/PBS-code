@@ -37,6 +37,7 @@ const corsOptions = {
     const allowedOrigins = [
       'https://billingsoftwarefocus.netlify.app',
       'https://backend-billing-v1.onrender.com',
+      'https://fdbs.netlify.app',
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:1000',
