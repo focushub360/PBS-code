@@ -25,6 +25,7 @@ const expenseRoutes = require('./routes/expenseRoutes')
 const balanceSheetRoutes = require('./routes/balanceSheetRoutes')
 const financeRoutes = require('./routes/financeRoutes')
 const logoRoutes = require('./routes/logoRoutes')
+const interestConfigRoutes = require('./routes/interestConfigRoutes')
 const app = express()
 
 // CORS configuration for production and development
@@ -36,7 +37,6 @@ const corsOptions = {
     const allowedOrigins = [
       'https://billingsoftwarefocus.netlify.app',
       'https://backend-billing-v1.onrender.com',
-      'https://fdbs.netlify.app/login',
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:1000',
@@ -62,8 +62,7 @@ const corsOptions = {
 }
 
 // Middleware
-// app.use(cors(corsOptions))
-app.use(cors())
+app.use(cors(corsOptions))
 app.use(express.json())
 
 app.get('/', (req, res) => {
@@ -92,6 +91,7 @@ app.use('/api/expenses', expenseRoutes)
 app.use('/api/balance-sheet', balanceSheetRoutes)
 app.use('/api/finance', financeRoutes)
 app.use('/api/logo', logoRoutes)
+app.use('/api/interest-config', interestConfigRoutes)
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

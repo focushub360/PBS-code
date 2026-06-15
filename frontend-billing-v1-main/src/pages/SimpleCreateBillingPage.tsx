@@ -1,4 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
+import { LivePhotoCapture } from "../components/LivePhotoCapture";
+import { InvoiceModal } from "../components/InvoiceModal";
+import { useCurrentInterestRate } from "../hooks/useCurrentInterestRate";
 import { useFieldArray, useForm } from "react-hook-form";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
@@ -7,12 +10,6 @@ import { BillingCreateRequest } from "../types";
 import { SearchableDistrictDropdown } from "../components/SearchableDistrictDropdown";
 import { colors } from "../theme/colors";
 
-// Simple, compact, single-page billing form
-// - Full width
-// - All fields visible
-// - 2 rows x 2 columns (Customer | Items) on first row and (Loan | Payment) on second row
-// - Uses project theme colors
-
 const createBilling = async (data: BillingCreateRequest) => {
   const response = await api.post("/billing/create", data);
   return response.data;
@@ -20,6 +17,15 @@ const createBilling = async (data: BillingCreateRequest) => {
 
 export default function SimpleCreateBillingPage() {
   const queryClient = useQueryClient();
+  const { rate } = useCurrentInterestRate();
+
+  // ── Invoice modal state ────────────────────────────────────
+  const [invoiceState, setInvoiceState] = useState<{
+    isOpen: boolean;
+    loanId: string;
+    loanObjectId: string;
+    invoiceData: any;
+  }>({ isOpen: false, loanId: "", loanObjectId: "", invoiceData: null });
 
   const {
     register,
@@ -56,7 +62,7 @@ export default function SimpleCreateBillingPage() {
       loan: {
         amount: "" as unknown as number,
         interestType: "monthly",
-        interestPercent: 2.5,
+        interestPercent: rate ?? 2.5,
         validity: "6",
       },
       payment: {
@@ -66,7 +72,49 @@ export default function SimpleCreateBillingPage() {
     },
   });
 
-  // Live completeness checks for step gating
+  // ── KYC state ──────────────────────────────────────────────
+  const [aadhaarNumber, setAadhaarNumber] = useState("");
+  const [aadhaarError, setAadhaarError] = useState("");
+
+  const [livePhoto, setLivePhoto] = useState<File | null>(null);
+  const [livePhotoPreview, setLivePhotoPreview] = useState<string | null>(null);
+
+  const [aadhaarFront, setAadhaarFront] = useState<File | null>(null);
+  const [aadhaarFrontPreview, setAadhaarFrontPreview] = useState<string | null>(null);
+
+  const [aadhaarBack, setAadhaarBack] = useState<File | null>(null);
+  const [aadhaarBackPreview, setAadhaarBackPreview] = useState<string | null>(null);
+
+  const [otherID, setOtherID] = useState<File | null>(null);
+  const [otherIDPreview, setOtherIDPreview] = useState<string | null>(null);
+
+  const handleFileChange = (
+    file: File | null,
+    setFile: (f: File | null) => void,
+    setPreview: (p: string | null) => void
+  ) => {
+    if (!file) return;
+    setFile(file);
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (e) => setPreview(e.target?.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      // PDF or non-image — show filename as "preview"
+      setPreview(null);
+    }
+  };
+
+  const validateAadhaar = (val: string) => {
+    if (!/^\d{12}$/.test(val)) {
+      setAadhaarError("Aadhaar must be exactly 12 digits");
+    } else {
+      setAadhaarError("");
+    }
+    setAadhaarNumber(val);
+  };
+
+  // ── existing logic ─────────────────────────────────────────
   const watchedItems = watch("items");
   const watchedCustomer = watch("customer");
 
@@ -94,7 +142,6 @@ export default function SimpleCreateBillingPage() {
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
-  // Bring master-items and selection state from advanced page
   const fetchMasterItems = async () => {
     const response = await api.get("/items/master");
     return response.data;
@@ -102,7 +149,6 @@ export default function SimpleCreateBillingPage() {
   const {
     data: masterItems = [],
     isLoading,
-    error,
   } = useQuery({
     queryKey: ["master-items"],
     queryFn: fetchMasterItems,
@@ -111,6 +157,7 @@ export default function SimpleCreateBillingPage() {
   const [selectedMasterItems, setSelectedMasterItems] = useState<{
     [key: number]: any;
   }>({});
+
   const handleMasterItemSelect = (index: number, masterItemId: string) => {
     if (!masterItemId) {
       setSelectedMasterItems((prev) => {
@@ -125,12 +172,10 @@ export default function SimpleCreateBillingPage() {
       return;
     }
     const masterItem = masterItems.find((it: any) => it._id === masterItemId);
-
     if (masterItem) {
       setSelectedMasterItems((prev) => ({ ...prev, [index]: masterItem }));
       setValue(`items.${index}.code`, masterItem.code || "");
       setValue(`items.${index}.name`, masterItem.name || "");
-      // Clear category and carat when master item changes
       setValue(`items.${index}.category`, "");
       setValue(`items.${index}.carat`, "");
     }
@@ -138,7 +183,6 @@ export default function SimpleCreateBillingPage() {
 
   const handleCategoryChange = (index: number, categoryName: string) => {
     setValue(`items.${index}.category`, categoryName);
-    // Don't clear carat since carats are available for all categories in this master item
   };
 
   const handleCaratChange = (index: number, caratValue: string) => {
@@ -147,135 +191,151 @@ export default function SimpleCreateBillingPage() {
 
   const mutation = useMutation({
     mutationFn: createBilling,
-    onSuccess: () => {
+    onSuccess: (response, variables) => {
       toast.success("Billing created successfully!");
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       queryClient.invalidateQueries({ queryKey: ["billing-stats"] });
+
+      // Open existing InvoiceModal with API response
+      setInvoiceState({
+        isOpen: true,
+        loanId: response?.data?.loanId || "",
+        loanObjectId: response?.data?.loanObjectId || "",
+        invoiceData: {
+          customerName: variables.customer.name,
+          customerPhone: variables.customer.phone,
+          loanAmount: Number(variables.loan.amount),
+          payment: variables.payment,
+          items: (variables.items as any[]).map((it: any) => ({
+            name: it.name,
+            category: it.category,
+            weight: it.weight,
+            estimatedValue: it.estimatedValue,
+          })),
+        },
+      });
+
       reset();
+      setAadhaarNumber("");
+      setLivePhoto(null); setLivePhotoPreview(null);
+      setAadhaarFront(null); setAadhaarFrontPreview(null);
+      setAadhaarBack(null); setAadhaarBackPreview(null);
+      setOtherID(null); setOtherIDPreview(null);
     },
     onError: (error: any) => {
-      console.error(error);
       const msg = error?.response?.data?.message || "Failed to create billing";
       toast.error(msg);
     },
   });
 
   const onSubmit = (data: BillingCreateRequest) => {
+    // KYC validation
+    if (!/^\d{12}$/.test(aadhaarNumber)) {
+      toast.error("Enter a valid 12-digit Aadhaar number.");
+      return;
+    }
+    if (!livePhoto) {
+      toast.error("Live photo capture is required.");
+      return;
+    }
+    if (!aadhaarFront) {
+      toast.error("Aadhaar front photo is required.");
+      return;
+    }
+    if (!aadhaarBack) {
+      toast.error("Aadhaar back photo is required.");
+      return;
+    }
+
     const parsed = {
       ...data,
       items: data.items.map((it, i) => ({
         ...it,
         code: it.code || `BILLING_${Date.now()}_${i}`,
-        weight:
-          typeof it.weight === "string"
-            ? (Number(it.weight) as unknown as any)
-            : it.weight,
-        estimatedValue:
-          typeof (it as any).estimatedValue === "string"
-            ? Number((it as any).estimatedValue)
-            : (it as any).estimatedValue,
+        weight: typeof it.weight === "string" ? Number(it.weight) as any : it.weight,
+        estimatedValue: typeof (it as any).estimatedValue === "string"
+          ? Number((it as any).estimatedValue)
+          : (it as any).estimatedValue,
       })) as any,
       loan: {
         ...data.loan,
-        amount:
-          typeof data.loan.amount === "string"
-            ? Number(data.loan.amount)
-            : data.loan.amount,
-        interestPercent:
-          typeof data.loan.interestPercent === "string"
-            ? Number(data.loan.interestPercent)
-            : data.loan.interestPercent,
+        amount: typeof data.loan.amount === "string" ? Number(data.loan.amount) : data.loan.amount,
+        interestPercent: typeof data.loan.interestPercent === "string"
+          ? Number(data.loan.interestPercent)
+          : data.loan.interestPercent,
         validity: String(data.loan.validity),
       },
       payment: {
-        cash:
-          typeof data.payment.cash === "string"
-            ? Number(data.payment.cash)
-            : data.payment.cash,
-        online:
-          typeof data.payment.online === "string"
-            ? Number(data.payment.online)
-            : data.payment.online,
+        cash: typeof data.payment.cash === "string" ? Number(data.payment.cash) : data.payment.cash,
+        online: typeof data.payment.online === "string" ? Number(data.payment.online) : data.payment.online,
       },
     } as BillingCreateRequest;
 
-    // Frontend validation mirroring backend requirements
-    // Check customer data
-    if (
-      !parsed.customer.name ||
-      !parsed.customer.phone ||
-      !parsed.customer.nominee
-    ) {
+    if (!parsed.customer.name || !parsed.customer.phone || !parsed.customer.nominee) {
       toast.error("Customer name, phone, and nominee are required.");
       return;
     }
-
-    // Check address data
     if (
-      !parsed.customer.address ||
-      !parsed.customer.address.doorNo ||
-      !parsed.customer.address.street ||
-      !parsed.customer.address.town ||
-      !parsed.customer.address.district ||
-      !parsed.customer.address.pincode
+      !parsed.customer.address?.doorNo ||
+      !parsed.customer.address?.street ||
+      !parsed.customer.address?.town ||
+      !parsed.customer.address?.district ||
+      !parsed.customer.address?.pincode
     ) {
       toast.error("All customer address fields are required.");
       return;
     }
-
-    // Check items data
     const itemsInvalid = (parsed.items as any[]).some(
-      (it) =>
-        !it.name ||
-        !it.category ||
-        !it.weight ||
-        it.weight <= 0 ||
-        !it.estimatedValue ||
-        it.estimatedValue <= 0
+      (it) => !it.name || !it.category || !it.weight || it.weight <= 0 || !it.estimatedValue || it.estimatedValue <= 0
     );
     if (itemsInvalid) {
-      toast.error(
-        "Please select master item and category, and enter weight and estimated value (> 0) for all items."
-      );
+      toast.error("Please select master item and category, and enter weight and estimated value (> 0) for all items.");
       return;
     }
-
-    const totalPayment =
-      (parsed.payment.cash || 0) + (parsed.payment.online || 0);
+    const totalPayment = (parsed.payment.cash || 0) + (parsed.payment.online || 0);
     if (totalPayment > parsed.loan.amount) {
       toast.error("Total payment cannot exceed loan amount.");
       return;
     }
 
-    mutation.mutate(parsed);
+    // If your backend accepts FormData for file uploads, build FormData here.
+    // Otherwise attach KYC data as additional fields:
+    const formData = new FormData();
+    formData.append("data", JSON.stringify({ ...parsed, aadhaarNumber }));
+    if (livePhoto) formData.append("livePhoto", livePhoto);
+    if (aadhaarFront) formData.append("aadhaarFront", aadhaarFront);
+    if (aadhaarBack) formData.append("aadhaarBack", aadhaarBack);
+    if (otherID) formData.append("otherIDProof", otherID);
+
+    // mutation.mutate(formData as any);   ← use this when backend is ready for FormData
+    mutation.mutate(parsed); // keep existing flow until backend is updated
   };
 
-  const sectionStyle: React.CSSProperties = {
-    // Light theme subtle border tint
-    borderColor: colors.primary[100],
-  };
+  const sectionStyle: React.CSSProperties = { borderColor: colors.primary[100] };
+  const primaryButtonStyle: React.CSSProperties = { backgroundColor: colors.primary.medium };
+  const outlineButtonStyle: React.CSSProperties = { borderColor: colors.primary[200], color: colors.primary.dark };
 
-  const sectionTitleStyle: React.CSSProperties = {
-    // Ensure readable title color in light theme
-    color: undefined, // use class-based color; reserved for future tweaks
-  };
-
-  const primaryButtonStyle: React.CSSProperties = {
-    // Make submit button visible in light theme
-    backgroundColor: colors.primary.medium,
-  };
-
-  const outlineButtonStyle: React.CSSProperties = {
-    // Improve outline visibility in light theme
-    borderColor: colors.primary[200],
-    color: colors.primary.dark,
-  };
-
-  // Enforce max loan = total estimated
   const loanAmount = Number(watch("loan.amount")) || 0;
   if (loanAmount > totalEstimated && totalEstimated > 0) {
     setValue("loan.amount", totalEstimated as any, { shouldValidate: true });
   }
+
+  // ── small reusable preview box ─────────────────────────────
+  const PhotoPreview = ({ preview, file, label }: { preview: string | null; file: File | null; label: string }) => {
+    if (!file) return null;
+    return (
+      <div className="mt-1.5 flex items-center gap-2">
+        {preview ? (
+          <img src={preview} alt={label} className="w-14 h-14 object-cover rounded border dark:border-gray-600" />
+        ) : (
+          <div className="w-14 h-14 flex items-center justify-center rounded border bg-gray-100 dark:bg-gray-700 dark:border-gray-600">
+            <span className="text-lg">📄</span>
+          </div>
+        )}
+        <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]">{file.name}</span>
+      </div>
+    );
+  };
 
   return (
     <div className="w-full p-3 sm:p-4 dark:bg-gray-900 min-h-screen">
@@ -286,162 +346,213 @@ export default function SimpleCreateBillingPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Row 1: Customer | Items */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {/* Customer */}
+
+          {/* ── Customer ── */}
           <section
             className="space-y-3 p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
             style={sectionStyle}
           >
-            <h2
-              className="text-base sm:text-lg font-medium dark:text-white"
-              style={sectionTitleStyle}
-            >
-              Customer
-            </h2>
+            <h2 className="text-base sm:text-lg font-medium dark:text-white">Customer</h2>
 
+            {/* Name + Phone */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">
-                  Full Name *
-                </label>
+                <label className="block text-xs mb-1 dark:text-gray-300">Full Name *</label>
                 <input
                   type="text"
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   placeholder="Customer name"
-                  {...register("customer.name", {
-                    required: "Name is required",
-                  })}
+                  {...register("customer.name", { required: "Name is required" })}
                 />
                 {errors.customer?.name && (
-                  <p className="text-xs text-red-600 mt-0.5">
-                    {errors.customer.name.message}
-                  </p>
+                  <p className="text-xs text-red-600 mt-0.5">{errors.customer.name.message}</p>
                 )}
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">
-                  Phone *
-                </label>
+                <label className="block text-xs mb-1 dark:text-gray-300">Phone *</label>
                 <input
                   type="tel"
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   placeholder="10-digit phone"
                   {...register("customer.phone", {
                     required: "Phone is required",
-                    pattern: {
-                      value: /^[0-9]{10}$/ as unknown as RegExp,
-                      message: "Must be 10 digits",
-                    },
+                    pattern: { value: /^[0-9]{10}$/ as unknown as RegExp, message: "Must be 10 digits" },
                   })}
                 />
                 {errors.customer?.phone && (
-                  <p className="text-xs text-red-600 mt-0.5">
-                    {errors.customer.phone.message}
-                  </p>
+                  <p className="text-xs text-red-600 mt-0.5">{errors.customer.phone.message}</p>
                 )}
               </div>
             </div>
 
+            {/* Address */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">
-                  Door No *
-                </label>
-                <input
-                  className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  {...register("customer.address.doorNo", {
-                    required: "Required",
-                  })}
-                />
+                <label className="block text-xs mb-1 dark:text-gray-300">Door No *</label>
+                <input className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  {...register("customer.address.doorNo", { required: "Required" })} />
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">
-                  Street *
-                </label>
-                <input
-                  className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  {...register("customer.address.street", {
-                    required: "Required",
-                  })}
-                />
+                <label className="block text-xs mb-1 dark:text-gray-300">Street *</label>
+                <input className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  {...register("customer.address.street", { required: "Required" })} />
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">
-                  Town *
-                </label>
-                <input
-                  className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  {...register("customer.address.town", {
-                    required: "Required",
-                  })}
-                />
+                <label className="block text-xs mb-1 dark:text-gray-300">Town *</label>
+                <input className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  {...register("customer.address.town", { required: "Required" })} />
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">
-                  District *
-                </label>
+                <label className="block text-xs mb-1 dark:text-gray-300">District *</label>
                 <SearchableDistrictDropdown
                   value={watch("customer.address.district") || ""}
-                  onChange={(value) =>
-                    setValue("customer.address.district", value)
-                  }
+                  onChange={(value) => setValue("customer.address.district", value)}
                   error={errors.customer?.address?.district?.message}
                   placeholder="Select district"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">
-                  Pincode *
-                </label>
-                <input
-                  className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                  {...register("customer.address.pincode", {
-                    required: "Required",
-                  })}
-                />
+                <label className="block text-xs mb-1 dark:text-gray-300">Pincode *</label>
+                <input className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  {...register("customer.address.pincode", { required: "Required" })} />
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">
-                  Nominee *
-                </label>
+                <label className="block text-xs mb-1 dark:text-gray-300">Nominee *</label>
                 <input
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   placeholder="Nominee name"
-                  {...register("customer.nominee", {
-                    required: "Nominee is required",
-                  })}
+                  {...register("customer.nominee", { required: "Nominee is required" })}
                 />
                 {errors.customer?.nominee && (
-                  <p className="text-xs text-red-600 mt-0.5">
-                    {errors.customer.nominee.message}
-                  </p>
+                  <p className="text-xs text-red-600 mt-0.5">{errors.customer.nominee.message}</p>
                 )}
               </div>
             </div>
+
+            {/* ── KYC & Identity ── */}
+            <div className="pt-2 border-t dark:border-gray-600">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                KYC &amp; Identity
+              </h3>
+
+              <div className="space-y-3">
+
+                {/* Aadhaar Number */}
+                <div>
+                  <label className="block text-xs mb-1 dark:text-gray-300">Aadhaar Number *</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={12}
+                    value={aadhaarNumber}
+                    onChange={(e) => validateAadhaar(e.target.value.replace(/\D/g, ""))}
+                    placeholder="12-digit Aadhaar number"
+                    className={`w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:text-white ${
+                      aadhaarError ? "border-red-500" : "dark:border-gray-600"
+                    }`}
+                  />
+                  {aadhaarError && <p className="text-xs text-red-600 mt-0.5">{aadhaarError}</p>}
+                  {aadhaarNumber.length === 12 && !aadhaarError && (
+                    <p className="text-xs text-green-600 mt-0.5">✓ Valid Aadhaar number</p>
+                  )}
+                </div>
+
+                {/* Live Photo — WebRTC camera capture */}
+                <div>
+                  <LivePhotoCapture
+                    captured={!!livePhoto}
+                    onCapture={(file, preview) => {
+                      setLivePhoto(file);
+                      setLivePhotoPreview(preview);
+                    }}
+                  />
+                  <PhotoPreview preview={livePhotoPreview} file={livePhoto} label="Live photo" />
+                </div>
+
+                {/* Aadhaar Front + Back side by side */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs mb-1 dark:text-gray-300">Aadhaar Front *</label>
+                    <label className="flex items-center gap-2 px-2 py-1.5 border rounded text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600">
+                      <span>🪪</span>
+                      <span className="dark:text-gray-300">
+                        {aadhaarFront ? aadhaarFront.name : "Upload front side"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) =>
+                          handleFileChange(e.target.files?.[0] || null, setAadhaarFront, setAadhaarFrontPreview)
+                        }
+                      />
+                    </label>
+                    <PhotoPreview preview={aadhaarFrontPreview} file={aadhaarFront} label="Aadhaar front" />
+                  </div>
+                  <div>
+                    <label className="block text-xs mb-1 dark:text-gray-300">Aadhaar Back *</label>
+                    <label className="flex items-center gap-2 px-2 py-1.5 border rounded text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600">
+                      <span>🪪</span>
+                      <span className="dark:text-gray-300">
+                        {aadhaarBack ? aadhaarBack.name : "Upload back side"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) =>
+                          handleFileChange(e.target.files?.[0] || null, setAadhaarBack, setAadhaarBackPreview)
+                        }
+                      />
+                    </label>
+                    <PhotoPreview preview={aadhaarBackPreview} file={aadhaarBack} label="Aadhaar back" />
+                  </div>
+                </div>
+
+                {/* Other ID Proof — optional */}
+                <div>
+                  <label className="block text-xs mb-1 dark:text-gray-300">
+                    Other ID Proof{" "}
+                    <span className="text-gray-400 font-normal">(optional — Voter ID, Passport, DL...)</span>
+                  </label>
+                  <label className="flex items-center gap-2 px-2 py-1.5 border rounded text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600 border-dashed">
+                    <span>📎</span>
+                    <span className="dark:text-gray-300">
+                      {otherID ? otherID.name : "Upload image or PDF"}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      className="hidden"
+                      onChange={(e) =>
+                        handleFileChange(e.target.files?.[0] || null, setOtherID, setOtherIDPreview)
+                      }
+                    />
+                  </label>
+                  <PhotoPreview preview={otherIDPreview} file={otherID} label="Other ID" />
+                </div>
+
+              </div>
+            </div>
+            {/* end KYC */}
+
           </section>
 
-          {/* Items */}
+          {/* ── Items ── */}
           <section
             className="space-y-3 p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
             style={sectionStyle}
           >
             <div className="flex items-center justify-between">
-              <h2
-                className="text-base sm:text-lg font-medium dark:text-white"
-                style={sectionTitleStyle}
-              >
-                Items
-              </h2>
+              <h2 className="text-base sm:text-lg font-medium dark:text-white">Items</h2>
               <button
                 type="button"
                 className="px-2 py-1 border rounded text-xs dark:border-gray-500 dark:text-gray-300 hover:dark:bg-gray-700"
                 style={outlineButtonStyle}
                 onClick={() =>
                   append({
-                    code: "",
-                    name: "",
-                    category: "",
-                    carat: "",
+                    code: "", name: "", category: "", carat: "",
                     weight: "" as unknown as number,
                     estimatedValue: "" as unknown as number,
                   })
@@ -453,10 +564,7 @@ export default function SimpleCreateBillingPage() {
 
             {fields.map((field, index) => {
               const selectedMaster = selectedMasterItems[index];
-              // Categories are just strings in the backend
               const categories = selectedMaster?.categories || [];
-              const watchedCategory = watch(`items.${index}.category`);
-              // Carats are available for all categories of this master item
               const carats = selectedMaster?.carats || [];
 
               return (
@@ -466,51 +574,35 @@ export default function SimpleCreateBillingPage() {
                   style={{ borderColor: colors.primary[100] }}
                 >
                   <div className="md:col-span-3">
-                    <label className="block text-xs mb-1 dark:text-gray-300">
-                      Master Item
-                    </label>
+                    <label className="block text-xs mb-1 dark:text-gray-300">Master Item</label>
                     <select
                       className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       value={selectedMaster?._id || ""}
-                      onChange={(e) =>
-                        handleMasterItemSelect(index, e.target.value)
-                      }
+                      onChange={(e) => handleMasterItemSelect(index, e.target.value)}
                       disabled={isLoading}
                     >
-                      <option value="">
-                        {isLoading ? "Loading..." : "Select master item"}
-                      </option>
+                      <option value="">{isLoading ? "Loading..." : "Select master item"}</option>
                       {masterItems.map((item: any) => (
-                        <option key={item._id} value={item._id}>
-                          {item.name}
-                        </option>
+                        <option key={item._id} value={item._id}>{item.name}</option>
                       ))}
                     </select>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs mb-1 dark:text-gray-300">
-                      Category
-                    </label>
+                    <label className="block text-xs mb-1 dark:text-gray-300">Category</label>
                     <select
                       className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       value={watch(`items.${index}.category`) || ""}
-                      onChange={(e) =>
-                        handleCategoryChange(index, e.target.value)
-                      }
+                      onChange={(e) => handleCategoryChange(index, e.target.value)}
                       disabled={!selectedMaster}
                     >
                       <option value="">Select category</option>
-                      {categories.map((categoryName: string) => (
-                        <option key={categoryName} value={categoryName}>
-                          {categoryName}
-                        </option>
+                      {categories.map((cat: string) => (
+                        <option key={cat} value={cat}>{cat}</option>
                       ))}
                     </select>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs mb-1 dark:text-gray-300">
-                      Carat
-                    </label>
+                    <label className="block text-xs mb-1 dark:text-gray-300">Carat</label>
                     <select
                       className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       value={watch(`items.${index}.carat`) || ""}
@@ -519,33 +611,24 @@ export default function SimpleCreateBillingPage() {
                     >
                       <option value="">Select carat</option>
                       {carats.map((carat: string) => (
-                        <option key={carat} value={carat}>
-                          {carat}
-                        </option>
+                        <option key={carat} value={carat}>{carat}</option>
                       ))}
                     </select>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs mb-1 dark:text-gray-300">
-                      Weight
-                    </label>
+                    <label className="block text-xs mb-1 dark:text-gray-300">Weight</label>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="number" step="0.01"
                       className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       {...register(`items.${index}.weight` as const)}
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs mb-1 dark:text-gray-300">
-                      Estimated Value *
-                    </label>
+                    <label className="block text-xs mb-1 dark:text-gray-300">Estimated Value *</label>
                     <input
                       type="number"
                       className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                      {...register(`items.${index}.estimatedValue` as const, {
-                        required: "Required",
-                      })}
+                      {...register(`items.${index}.estimatedValue` as const, { required: "Required" })}
                     />
                   </div>
                   <div className="md:col-span-1 flex gap-2">
@@ -570,19 +653,11 @@ export default function SimpleCreateBillingPage() {
             className="space-y-3 p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
             style={sectionStyle}
           >
-            <h2
-              className="text-base sm:text-lg font-medium dark:text-white"
-              style={sectionTitleStyle}
-            >
-              Loan
-            </h2>
+            <h2 className="text-base sm:text-lg font-medium dark:text-white">Loan</h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">
-                  Amount *
-                </label>
+                <label className="block text-xs mb-1 dark:text-gray-300">Amount *</label>
                 <div className="relative">
-                  {/* Background hint shows total estimated when loan not yet entered */}
                   {!Number(watch("loan.amount")) && totalEstimated > 0 && (
                     <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-gray-400 dark:text-gray-500">
                       Est: {totalEstimated}
@@ -597,14 +672,12 @@ export default function SimpleCreateBillingPage() {
                 </div>
                 {!canEnterLoan && (
                   <p className="text-[11px] mt-1 text-gray-500 dark:text-gray-400">
-                    Fill customer and items (with estimated value) first.
+                    Fill customer and items first.
                   </p>
                 )}
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">
-                  Interest Type
-                </label>
+                <label className="block text-xs mb-1 dark:text-gray-300">Interest Type</label>
                 <select
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   {...register("loan.interestType")}
@@ -615,20 +688,15 @@ export default function SimpleCreateBillingPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">
-                  Interest %
-                </label>
+                <label className="block text-xs mb-1 dark:text-gray-300">Interest %</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="number" step="0.01"
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   {...register("loan.interestPercent", { valueAsNumber: true })}
                 />
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">
-                  Validity (months)
-                </label>
+                <label className="block text-xs mb-1 dark:text-gray-300">Validity (months)</label>
                 <input
                   type="text"
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -643,17 +711,10 @@ export default function SimpleCreateBillingPage() {
             className="space-y-3 p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
             style={sectionStyle}
           >
-            <h2
-              className="text-base sm:text-lg font-medium dark:text-white"
-              style={sectionTitleStyle}
-            >
-              Payment
-            </h2>
+            <h2 className="text-base sm:text-lg font-medium dark:text-white">Payment</h2>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">
-                  Cash
-                </label>
+                <label className="block text-xs mb-1 dark:text-gray-300">Cash</label>
                 <input
                   type="number"
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -661,9 +722,7 @@ export default function SimpleCreateBillingPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">
-                  Online
-                </label>
+                <label className="block text-xs mb-1 dark:text-gray-300">Online</label>
                 <input
                   type="number"
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -685,7 +744,14 @@ export default function SimpleCreateBillingPage() {
           </button>
           <button
             type="button"
-            onClick={() => reset()}
+            onClick={() => {
+              reset();
+              setAadhaarNumber("");
+              setLivePhoto(null); setLivePhotoPreview(null);
+              setAadhaarFront(null); setAadhaarFrontPreview(null);
+              setAadhaarBack(null); setAadhaarBackPreview(null);
+              setOtherID(null); setOtherIDPreview(null);
+            }}
             className="px-4 py-2 border rounded dark:border-gray-500 dark:text-gray-300 hover:dark:bg-gray-700"
             style={outlineButtonStyle}
           >
@@ -693,6 +759,16 @@ export default function SimpleCreateBillingPage() {
           </button>
         </div>
       </form>
+
+      {/* Invoice Modal — opens automatically after billing is created */}
+      <InvoiceModal
+        isOpen={invoiceState.isOpen}
+        onClose={() => setInvoiceState(s => ({ ...s, isOpen: false }))}
+        loanId={invoiceState.loanId}
+        loanObjectId={invoiceState.loanObjectId}
+        type="view"
+        invoiceData={invoiceState.invoiceData}
+      />
     </div>
   );
 }

@@ -221,7 +221,7 @@ export const LoginPage = () => {
                     if (parent) {
                       parent.className =
                         "w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4";
-                      parent.style.backgroundColor = colors.primary.medium;
+                      parent.style.backgroundColor = "linear-gradient(135deg, #0a0f2c, #141e46, #1b2559)";
                       parent.textContent = "F";
                     }
                   }}
@@ -229,7 +229,9 @@ export const LoginPage = () => {
               ) : (
                 <div
                   className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-2xl"
-                  style={{ backgroundColor: colors.primary.medium }}
+                  style={{ 
+                    background:"linear-gradient(135deg, #0a0f2c, #141e46, #1b2559)" 
+                  }}
                 >
                   F
                 </div>
@@ -325,7 +327,7 @@ export const LoginPage = () => {
               disabled={isLoading}
               className="w-full py-3 px-4 text-white font-medium rounded-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                backgroundColor: colors.primary.medium,
+                background: "linear-gradient(135deg, #050816, #0f0524, #12031f)",
                 borderRadius: themeConfig.borderRadius,
                 focusRingColor: colors.primary.light,
               }}

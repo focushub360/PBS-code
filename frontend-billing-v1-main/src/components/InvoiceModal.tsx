@@ -1,32 +1,18 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import {
   X,
   Download,
   FileText,
   User,
   Phone,
-  MapPin,
-  Calendar,
   IndianRupee,
   Package,
   CheckCircle,
-  Clock,
   Printer,
 } from "lucide-react";
-import { JewelryInvoice } from "./JewelryInvoice";
-import { PDFViewer } from "./PDFViewer";
 import { colors } from "../theme/colors";
-import { fetchShopDetails } from "../utils/api";
-
-// Get API base URL based on environment
-const getApiBaseUrl = () => {
-  return (
-    import.meta.env.VITE_API_BASE_URL ||
-    (import.meta.env.DEV
-      ? "/api" // Use Vite proxy in development
-      : "https://backend-billing-v1.onrender.com/api")
-  ); // Production backend URL
-};
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 interface InvoiceModalProps {
   isOpen: boolean;
@@ -53,41 +39,6 @@ interface InvoiceModalProps {
   };
 }
 
-const downloadInvoice = async (
-  loanId: string,
-  type: "billing" | "repayment"
-) => {
-  try {
-    const endpoint =
-      type === "billing"
-        ? `/invoice/loan/${loanId}/pdf`
-        : `/invoice/repayment/${loanId}/pdf`;
-    const response = await fetch(`${getApiBaseUrl()}${endpoint}`, {
-      headers: {
-        Authorization: `Bearer ${sessionStorage.getItem("admin_token")}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to download invoice: ${errorText}`);
-    }
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    const prefix = type === "billing" ? "B" : "R";
-    link.download = `${prefix}-${loanId}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    alert(`Failed to download ${type} invoice. Please try again.`);
-  }
-};
-
 export const InvoiceModal = ({
   isOpen,
   onClose,
@@ -96,404 +47,216 @@ export const InvoiceModal = ({
   type,
   invoiceData,
 }: InvoiceModalProps) => {
-  const [downloading, setDownloading] = useState<string | null>(null);
-  const [shopDetails, setShopDetails] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [pdfLoading, setPdfLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
-
-  // Generate PDF URL for preview
-  const generatePdfUrl = (invoiceType: "billing" | "repayment") => {
-    const endpoint =
-      invoiceType === "billing"
-        ? `/invoice/loan/${loanObjectId}/pdf`
-        : `/invoice/repayment/${loanObjectId}/pdf`;
-    const token = sessionStorage.getItem("admin_token");
-    return `${getApiBaseUrl()}${endpoint}?token=${token}&timestamp=${Date.now()}`;
-  };
-
-  // Fetch shop details and load PDF on component mount
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        setPdfLoading(true);
-
-        // Load shop details
-        const details = await fetchShopDetails();
-        setShopDetails(details);
-
-        // Generate PDF URL for preview
-        const invoiceType = type === "success" ? "repayment" : "billing";
-        const url = generatePdfUrl(invoiceType);
-        setPdfUrl(url);
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-        // Fallback shop details will be used from the API function
-      } finally {
-        setLoading(false);
-        setPdfLoading(false);
-      }
-    };
-
-    if (isOpen) {
-      loadData();
-    }
-  }, [isOpen, loanObjectId, type]);
 
   if (!isOpen) return null;
 
-  const handleDownload = async (invoiceType: "billing" | "repayment") => {
-    setDownloading(invoiceType);
-    await downloadInvoice(loanObjectId, invoiceType);
-    setDownloading(null);
-  };
+  const totalPaid =
+    (invoiceData?.payment?.cash || 0) + (invoiceData?.payment?.online || 0);
+  const balance = (invoiceData?.loanAmount || 0) - totalPaid;
+  const today = new Date().toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
 
-  const handlePrint = () => {
-    if (pdfUrl) {
-      // Open the PDF in a new window and trigger print
-      const printWindow = window.open(pdfUrl, "_blank");
-      if (printWindow) {
-        printWindow.onload = () => {
-          printWindow.print();
-        };
+  const generatePDF = async (action: "download" | "print") => {
+    if (!invoiceRef.current) return;
+    setDownloading(true);
+    try {
+      const canvas = await html2canvas(invoiceRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgHeight = (canvas.height * pageWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pageWidth, Math.min(imgHeight, pageHeight));
+      if (action === "download") {
+        pdf.save(`Invoice-${loanId}.pdf`);
+      } else {
+        const blob = pdf.output("blob");
+        const url = URL.createObjectURL(blob);
+        const win = window.open(url, "_blank");
+        if (win) {
+          win.onload = () => { win.print(); URL.revokeObjectURL(url); };
+        }
       }
-    } else {
-      alert("PDF is still loading. Please wait and try again.");
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      alert("Failed to generate PDF. Please try again.");
+    } finally {
+      setDownloading(false);
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
-            <div
-              className="p-2 rounded-lg"
-              style={{ backgroundColor: colors.primary[100] }}
-            >
+            <div className="p-2 rounded-lg" style={{ backgroundColor: colors.primary[100] }}>
               {type === "success" ? (
-                <CheckCircle
-                  className="h-6 w-6"
-                  style={{ color: colors.primary.dark }}
-                />
+                <CheckCircle className="h-6 w-6" style={{ color: colors.primary.dark }} />
               ) : (
-                <FileText
-                  className="h-6 w-6"
-                  style={{ color: colors.primary.dark }}
-                />
+                <FileText className="h-6 w-6" style={{ color: colors.primary.dark }} />
               )}
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                {type === "success"
-                  ? "Payment Successful!"
-                  : "🎉 Billing Created Successfully!"}
+                {type === "success" ? "Payment Successful!" : "🎉 Billing Created Successfully!"}
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Loan ID:{" "}
-                <span className="font-bold text-blue-600">{loanId}</span> |
-                Professional invoice ready for download and print
+                Loan ID: <span className="font-bold text-blue-600">{loanId}</span> | Invoice ready
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-          >
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
-          {/* Action Buttons Section */}
-          <div className="mb-6 bg-gradient-to-r from-blue-50 to-green-50 dark:from-gray-700 dark:to-gray-800 rounded-xl p-6 border border-blue-200 dark:border-gray-600">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 text-center">
-              📋 Invoice Actions Available
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* View Invoice */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-                <div className="text-center">
-                  <div className="mb-2">
-                    <FileText className="h-8 w-8 mx-auto text-blue-600" />
-                  </div>
-                  <h4 className="font-bold text-gray-900 dark:text-white mb-2">
-                    👁️ View Invoice
-                  </h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    Same PDF content as download
-                  </p>
-                  <div className="text-sm text-green-600 dark:text-green-400 font-medium">
-                    ✅ PDF preview below
-                  </div>
-                </div>
-              </div>
-
-              {/* Print Invoice */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-                <div className="text-center">
-                  <div className="mb-2">
-                    <Printer className="h-8 w-8 mx-auto text-green-600" />
-                  </div>
-                  <h4 className="font-bold text-gray-900 dark:text-white mb-2">
-                    🖨️ Print Invoice
-                  </h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    Same PDF format as download
-                  </p>
-                  <button
-                    onClick={handlePrint}
-                    className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm w-full"
-                  >
-                    <Printer className="h-4 w-4" />
-                    <span>Print Now</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Download Invoice */}
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-                <div className="text-center">
-                  <div className="mb-2">
-                    <Download className="h-8 w-8 mx-auto text-purple-600" />
-                  </div>
-                  <h4 className="font-bold text-gray-900 dark:text-white mb-2">
-                    💾 Download PDF
-                  </h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    Professional PDF invoice
-                  </p>
-                  <button
-                    onClick={() => handleDownload("billing")}
-                    disabled={downloading === "billing"}
-                    className="flex items-center justify-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm w-full"
-                  >
-                    {downloading === "billing" ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    ) : (
-                      <Download className="h-4 w-4" />
-                    )}
-                    <span>Download PDF</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {type === "success" && (
-            <div
-              className="rounded-lg p-4 mb-6"
-              style={{ backgroundColor: colors.primary[50] }}
+        {/* Action Buttons */}
+        <div className="px-6 pt-6">
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <button
+              onClick={() => generatePDF("print")}
+              disabled={downloading}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition-colors disabled:opacity-50"
             >
-              <div className="flex items-center space-x-2 mb-2">
-                <CheckCircle
-                  className="h-5 w-5"
-                  style={{ color: colors.primary.dark }}
-                />
-                <span
-                  className="font-medium"
-                  style={{ color: colors.primary.dark }}
-                >
-                  Loan has been fully repaid
-                </span>
-              </div>
-              <p className="text-sm" style={{ color: colors.primary.medium }}>
-                The loan has been successfully repaid. You can download both
-                billing and repayment invoices below.
-              </p>
-            </div>
-          )}
-
-          {/* Professional PDF Invoice Preview */}
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-semibold text-gray-900 dark:text-white text-center flex-1">
-                Professional PDF Invoice Preview
-              </h3>
-              <button
-                onClick={handlePrint}
-                disabled={!pdfUrl || pdfLoading}
-                className="flex items-center space-x-2 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Print Invoice"
-              >
-                <Printer className="h-4 w-4" />
-                <span>Print</span>
-              </button>
-            </div>
-            <div className="flex justify-center">
-              <div className="border-2 border-gray-300 dark:border-gray-600 shadow-lg rounded-lg overflow-hidden bg-white">
-                {pdfUrl ? (
-                  <PDFViewer
-                    pdfUrl={pdfUrl}
-                    width={500}
-                    height={700}
-                    scale={0.8}
-                    onLoadError={(error) => {
-                      console.error("PDF load error:", error);
-                    }}
-                  />
-                ) : (
-                  <div
-                    className="flex items-center justify-center"
-                    style={{ width: 500, height: 700 }}
-                  >
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                      <p className="text-gray-600 dark:text-gray-400">
-                        Loading PDF preview...
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+              <Printer className="h-4 w-4" />
+              Print Invoice
+            </button>
+            <button
+              onClick={() => generatePDF("download")}
+              disabled={downloading}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold text-sm transition-colors disabled:opacity-50"
+            >
+              {downloading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              Download PDF
+            </button>
           </div>
+        </div>
 
-          {/* Customer & Loan Info */}
-          {invoiceData && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <div className="space-y-4">
-                <h3 className="font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
-                  <User className="h-4 w-4" />
-                  <span>Customer Details</span>
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <User className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-900 dark:text-white">
-                      {invoiceData.customerName}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Phone className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-900 dark:text-white">
-                      {invoiceData.customerPhone}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
-                  <IndianRupee className="h-4 w-4" />
-                  <span>Payment Details</span>
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">
-                      Loan Amount:
-                    </span>
-                    <span className="text-gray-900 dark:text-white">
-                      ₹{invoiceData.loanAmount.toLocaleString()}
-                    </span>
-                  </div>
-                  {invoiceData.totalAmount && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        Total Paid:
-                      </span>
-                      <span className="text-gray-900 dark:text-white font-medium">
-                        ₹{invoiceData.totalAmount.toLocaleString()}
-                      </span>
-                    </div>
-                  )}
-                  {invoiceData.repaymentDate && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        Repaid On:
-                      </span>
-                      <span className="text-gray-900 dark:text-white">
-                        {new Date(
-                          invoiceData.repaymentDate
-                        ).toLocaleDateString()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Items */}
-          {invoiceData?.items && (
-            <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 dark:text-white flex items-center space-x-2 mb-3">
-                <Package className="h-4 w-4" />
-                <span>Pledged Items</span>
-              </h3>
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <div className="space-y-2">
-                  {invoiceData.items.map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex justify-between items-center text-sm"
-                    >
-                      <div>
-                        <span className="font-medium text-gray-900 dark:text-white">
-                          {item.name}
-                        </span>
-                        <span className="text-gray-600 dark:text-gray-400 ml-2">
-                          ({item.category})
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-gray-900 dark:text-white">
-                          {item.weight}g
-                        </div>
-                        <div className="text-gray-600 dark:text-gray-400">
-                          ₹{item.estimatedValue.toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Quick Action Summary */}
-          <div className="bg-blue-50 dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-gray-600">
-            <div className="flex items-center justify-between">
+        {/* Printable Invoice Preview */}
+        <div className="px-6 pb-6">
+          <div
+            ref={invoiceRef}
+            style={{
+              background: "#fff",
+              fontFamily: "Arial, sans-serif",
+              fontSize: 13,
+              color: "#111",
+              padding: "32px 28px",
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            {/* Invoice Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingBottom: 16, borderBottom: "2px solid #111", marginBottom: 20 }}>
               <div>
-                <h4 className="font-semibold text-gray-900 dark:text-white">
-                  📋 Invoice Ready!
-                </h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Your professional invoice is generated and ready for use
-                </p>
+                <div style={{ fontSize: 22, fontWeight: 800 }}>Pawn Billing</div>
+                <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>Secure · Reliable · Efficient</div>
               </div>
-              <div className="flex space-x-2">
-                <div className="text-center px-3 py-2 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    Status
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: "#B8860B", letterSpacing: 2 }}>INVOICE</div>
+                <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>#{loanId}</div>
+                <div style={{ fontSize: 11, color: "#555" }}>{today}</div>
+              </div>
+            </div>
+
+            {/* Customer + Loan */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#888", marginBottom: 8 }}>Customer Details</div>
+                {[["Name", invoiceData?.customerName || "—"], ["Phone", invoiceData?.customerPhone || "—"]].map(([l, v]) => (
+                  <div key={l} style={{ display: "flex", gap: 6, marginBottom: 4, fontSize: 12 }}>
+                    <span style={{ color: "#666", minWidth: 50 }}>{l}</span>
+                    <span style={{ fontWeight: 600 }}>{v}</span>
                   </div>
-                  <div className="text-sm font-bold text-green-600">
-                    ✅ Ready
+                ))}
+              </div>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#888", marginBottom: 8 }}>Loan Details</div>
+                {[
+                  ["Loan ID", loanId],
+                  ["Amount", `₹${invoiceData?.loanAmount?.toLocaleString("en-IN") || 0}`],
+                  ["Cash Paid", `₹${(invoiceData?.payment?.cash || 0).toLocaleString("en-IN")}`],
+                  ["Online Paid", `₹${(invoiceData?.payment?.online || 0).toLocaleString("en-IN")}`],
+                ].map(([l, v]) => (
+                  <div key={l} style={{ display: "flex", gap: 6, marginBottom: 4, fontSize: 12 }}>
+                    <span style={{ color: "#666", minWidth: 75 }}>{l}</span>
+                    <span style={{ fontWeight: 600 }}>{v}</span>
                   </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Items Table */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: "#888", marginBottom: 8 }}>Pledged Items</div>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#111" }}>
+                    {["#", "Item", "Category", "Weight", "Est. Value"].map((h) => (
+                      <th key={h} style={{ padding: "7px 10px", fontSize: 11, textAlign: "left", color: "#fff" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoiceData?.items?.map((item, i) => (
+                    <tr key={i} style={{ borderBottom: "1px solid #eee" }}>
+                      <td style={{ padding: "7px 10px", fontSize: 12 }}>{i + 1}</td>
+                      <td style={{ padding: "7px 10px", fontSize: 12, fontWeight: 600 }}>{item.name}</td>
+                      <td style={{ padding: "7px 10px", fontSize: 12 }}>{item.category}</td>
+                      <td style={{ padding: "7px 10px", fontSize: 12 }}>{item.weight}g</td>
+                      <td style={{ padding: "7px 10px", fontSize: 12, fontWeight: 600 }}>₹{Number(item.estimatedValue).toLocaleString("en-IN")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Totals */}
+            <div style={{ borderTop: "2px solid #111", paddingTop: 12, marginBottom: 24 }}>
+              {[["Loan Amount", `₹${invoiceData?.loanAmount?.toLocaleString("en-IN") || 0}`], ["Total Paid", `₹${totalPaid.toLocaleString("en-IN")}`]].map(([l, v]) => (
+                <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: 13 }}>
+                  <span style={{ color: "#555" }}>{l}</span><span>{v}</span>
                 </div>
-                <div className="text-center px-3 py-2 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    Format
-                  </div>
-                  <div className="text-sm font-bold text-blue-600">
-                    📄 A4 PDF
-                  </div>
-                </div>
+              ))}
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 0 0", fontSize: 15, fontWeight: 800, borderTop: "1px solid #ddd", marginTop: 4 }}>
+                <span>Balance Due</span>
+                <span style={{ color: balance > 0 ? "#c0392b" : "#27ae60" }}>₹{balance.toLocaleString("en-IN")}</span>
+              </div>
+            </div>
+
+            {/* Signature Footer */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingTop: 16, borderTop: "1px solid #ddd" }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ width: 140, borderBottom: "1px solid #555", height: 36, marginBottom: 4 }} />
+                <div style={{ fontSize: 11, color: "#555" }}>Customer Signature</div>
+              </div>
+              <div style={{ textAlign: "right", fontSize: 10, color: "#888" }}>
+                <p>Computer generated invoice.</p>
+                <p style={{ marginTop: 3 }}>Thank you for your business.</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          >
+        <div className="flex justify-end px-6 pb-6">
+          <button onClick={onClose} className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
             Close
           </button>
         </div>

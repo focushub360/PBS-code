@@ -117,6 +117,7 @@ const menuItems = [
       },
       { path: "/admin/expenses", label: "Expense Management", icon: Receipt },
       { path: "/admin/shop-details", label: "Shop Details", icon: Settings },
+      { path: "/admin/interest-rates", label: "Interest Rate Config", icon: TrendingUp },
     ],
   },
 ];

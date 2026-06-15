@@ -39,6 +39,7 @@ import { ShopDetailsPage } from "./pages/ShopDetailsPage";
 import { AdminProfilePage } from "./pages/AdminProfilePage";
 import SimpleAdminProfilePage from "./pages/SimpleAdminProfilePage";
 import HomePage from "./pages/HomePage.tsx";
+import InterestRatePage from "./pages/InterestRatePage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -316,6 +317,17 @@ function App() {
                         <AdminRoute>
                           <Layout>
                             <ModernFinanceManagementPage />
+                          </Layout>
+                        </AdminRoute>
+                      }
+                    />
+                    
+                    <Route
+                      path="/admin/interest-rates"
+                      element={
+                        <AdminRoute>
+                          <Layout>
+                            <InterestRatePage />
                           </Layout>
                         </AdminRoute>
                       }
