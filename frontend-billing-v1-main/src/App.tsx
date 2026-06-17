@@ -40,6 +40,7 @@ import { AdminProfilePage } from "./pages/AdminProfilePage";
 import SimpleAdminProfilePage from "./pages/SimpleAdminProfilePage";
 import HomePage from "./pages/HomePage.tsx";
 import InterestRatePage from "./pages/InterestRatePage";
+import GoldRateSettingsPage from "./pages/GoldRateSettingsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -328,6 +329,16 @@ function App() {
                         <AdminRoute>
                           <Layout>
                             <InterestRatePage />
+                          </Layout>
+                        </AdminRoute>
+                      }
+                    />
+                    <Route
+                      path="/admin/gold-rates"
+                      element={
+                        <AdminRoute>
+                          <Layout>
+                            <GoldRateSettingsPage />
                           </Layout>
                         </AdminRoute>
                       }

@@ -23,6 +23,7 @@ const searchLoansByPhone = async (phone: string): Promise<Loan[]> => {
 
 export default function SimpleActiveLoansPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "due-soon" | "overdue">("all");
 
   const {
     data: loans,
@@ -45,6 +46,20 @@ export default function SimpleActiveLoansPage() {
 
   const displayLoans = searchTerm.length >= 10 ? searchResults : loans;
   const items = displayLoans || [];
+
+  // Overdue classification
+  const getOverdueStatus = (daysPassed: number) => {
+    if (daysPassed >= 90) return "overdue";
+    if (daysPassed >= 30) return "due-soon";
+    return "active";
+  };
+
+  const overdueCount = items.filter(l => getOverdueStatus(l.daysPassed || 0) === "overdue").length;
+  const dueSoonCount = items.filter(l => getOverdueStatus(l.daysPassed || 0) === "due-soon").length;
+
+  const filteredItems = filterStatus === "all" 
+    ? items 
+    : items.filter(l => getOverdueStatus(l.daysPassed || 0) === filterStatus);
 
   const sectionStyle: React.CSSProperties = {
     borderColor: colors.primary[200],
@@ -76,6 +91,33 @@ export default function SimpleActiveLoansPage() {
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Manage active loans and track payments ({items.length} loans)
         </p>
+      </div>
+      {/* Overdue Summary + Filter */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          onClick={() => setFilterStatus("all")}
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${filterStatus === "all" ? "bg-gray-800 text-white border-gray-800" : "border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-300"}`}
+        >
+          All ({items.length})
+        </button>
+        <button
+          onClick={() => setFilterStatus("active")}
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${filterStatus === "active" ? "bg-green-600 text-white border-green-600" : "border-green-300 text-green-700 dark:text-green-400"}`}
+        >
+          🟢 Active ({items.length - dueSoonCount - overdueCount})
+        </button>
+        <button
+          onClick={() => setFilterStatus("due-soon")}
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${filterStatus === "due-soon" ? "bg-yellow-500 text-white border-yellow-500" : "border-yellow-300 text-yellow-700 dark:text-yellow-400"}`}
+        >
+          🟡 Due Soon ({dueSoonCount})
+        </button>
+        <button
+          onClick={() => setFilterStatus("overdue")}
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${filterStatus === "overdue" ? "bg-red-600 text-white border-red-600" : "border-red-300 text-red-700 dark:text-red-400"}`}
+        >
+          🔴 Overdue ({overdueCount})
+        </button>
       </div>
 
       {/* Search */}
@@ -125,16 +167,27 @@ export default function SimpleActiveLoansPage() {
             No active loans found.
           </div>
         ) : (
-          items.map((loan) => {
+          filteredItems.map((loan) => {
             const customer = loan.customerId as Customer;
             const daysPassed = loan.daysPassed || 0;
             const currentInterest = loan.currentInterest || 0;
+            const status = getOverdueStatus(daysPassed);
+            const statusColor = status === "overdue" 
+              ? "border-l-4 border-l-red-500" 
+              : status === "due-soon" 
+              ? "border-l-4 border-l-yellow-500" 
+              : "border-l-4 border-l-green-500";
+            const statusBadge = status === "overdue" 
+              ? <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">🔴 Overdue</span>
+              : status === "due-soon"
+              ? <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-semibold">🟡 Due Soon</span>
+              : <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">🟢 Active</span>;
             const totalDue = loan.totalDue || loan.amount;
 
             return (
               <div
                 key={loan.loanId}
-                className="p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
+                className={`p-3 border rounded-lg dark:bg-gray-800 dark:border-gray-600 ${statusColor}`}
                 style={sectionStyle}
               >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
@@ -149,6 +202,7 @@ export default function SimpleActiveLoansPage() {
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       Loan ID: {loan.loanId}
                     </div>
+                    <div className="mt-1">{statusBadge}</div>
                   </div>
 
                   {/* Middle: Amounts */}

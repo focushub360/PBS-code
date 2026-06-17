@@ -73,6 +73,7 @@ export const RepaymentPage = () => {
   });
 
   const [isSearching, setIsSearching] = useState(false);
+  const [paymentType, setPaymentType] = useState<"interest" | "principal" | "both" | "full">("full");
 
   const repaymentMutation = useMutation({
     mutationFn: processRepayment,
@@ -169,8 +170,12 @@ export const RepaymentPage = () => {
       return;
     }
 
-    if (totalPayment !== selectedLoan.loan.totalDue) {
-      toast.error("Payment amount must equal total due amount");
+    if (totalPayment <= 0) {
+      toast.error("Payment amount must be greater than 0");
+      return;
+    }
+    if (paymentType === "full" && totalPayment !== selectedLoan.loan.totalDue) {
+      toast.error("Full payment amount must equal total due amount");
       return;
     }
 
@@ -186,6 +191,7 @@ export const RepaymentPage = () => {
           cash: Number(data.payment.cash),
           online: Number(data.payment.online),
         },
+        paymentType,
       });
 
       setRepaymentSuccess({
@@ -366,6 +372,45 @@ export const RepaymentPage = () => {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Payment Type Selector */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Payment Type
+              </label>
+              <select
+                value={paymentType}
+                onChange={(e) => {
+                  const type = e.target.value as typeof paymentType;
+                  setPaymentType(type);
+                  if (type === "full") {
+                    setValue("payment.cash", selectedLoan.loan.totalDue);
+                    setValue("payment.online", 0);
+                  } else if (type === "interest") {
+                    setValue("payment.cash", selectedLoan.loan.currentInterest);
+                    setValue("payment.online", 0);
+                  } else {
+                    setValue("payment.cash", 0);
+                    setValue("payment.online", 0);
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+              >
+                <option value="full">💰 Full Payment (Principal + Interest)</option>
+                <option value="interest">📅 Interest Only (Monthly Renewal)</option>
+                <option value="principal">🏦 Principal Part Payment</option>
+                <option value="both">💳 Both (Interest + Part Principal)</option>
+              </select>
+              {selectedLoan && paymentType === "interest" && (
+                <p className="text-xs text-blue-600 mt-1">
+                  ✓ Loan continues — only interest ₹{selectedLoan.loan.currentInterest.toLocaleString()} collected
+                </p>
+              )}
+              {paymentType === "principal" && (
+                <p className="text-xs text-orange-600 mt-1">
+                  ✓ Enter amount to reduce principal — future interest recalculates on remaining balance
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -531,7 +576,7 @@ export const RepaymentPage = () => {
             <div className="flex justify-end">
               <button
                 type="submit"
-                disabled={repaymentMutation.isPending || paymentBalance !== 0}
+                disabled={repaymentMutation.isPending || totalPayment <= 0 || (paymentType === "full" && paymentBalance !== 0)}
                 className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <CheckCircle className="h-4 w-4" />

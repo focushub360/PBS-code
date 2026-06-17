@@ -26,6 +26,7 @@ const balanceSheetRoutes = require('./routes/balanceSheetRoutes')
 const financeRoutes = require('./routes/financeRoutes')
 const logoRoutes = require('./routes/logoRoutes')
 const interestConfigRoutes = require('./routes/interestConfigRoutes')
+const metalRateRoutes = require('./routes/metalRateRoutes')
 const app = express()
 
 // CORS configuration for production and development
@@ -93,6 +94,7 @@ app.use('/api/balance-sheet', balanceSheetRoutes)
 app.use('/api/finance', financeRoutes)
 app.use('/api/logo', logoRoutes)
 app.use('/api/interest-config', interestConfigRoutes)
+app.use('/api/metal-rates', metalRateRoutes)
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

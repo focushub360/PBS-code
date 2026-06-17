@@ -7,7 +7,7 @@ const { calculateInterest } = require('./loanController')
 
 exports.repayLoan = async (req, res) => {
   try {
-    const { loanId, payment } = req.body
+    const { loanId, payment, paymentType } = req.body
     console.log('Processing repayment for loanId:', loanId, 'payment:', payment)
     
     // Find loan by loanId (string) or ObjectId
@@ -45,28 +45,28 @@ exports.repayLoan = async (req, res) => {
     // Validate payment amount
     if (totalPaid <= 0) {
       return res.status(400).json({
-        message: 'Payment amount must be greater than 0',
-        required: totalDue,
-        provided: totalPaid
+        message: 'Payment amount must be greater than 0'
       })
     }
-    
-    if (totalPaid < totalDue) {
-      return res.status(400).json({
-        message: 'Insufficient payment amount',
-        required: totalDue,
-        provided: totalPaid,
-        shortage: totalDue - totalPaid
-      })
-    }
-    
-    if (totalPaid > totalDue) {
-      return res.status(400).json({
-        message: 'Payment amount exceeds total due',
-        required: totalDue,
-        provided: totalPaid,
-        excess: totalPaid - totalDue
-      })
+''
+    // Full payment validation only for full paymentType
+    if (paymentType === 'full' || !paymentType) {
+      if (totalPaid < totalDue) {
+        return res.status(400).json({
+          message: 'Insufficient payment amount',
+          required: totalDue,
+          provided: totalPaid,
+          shortage: totalDue - totalPaid
+        })
+      }
+      if (totalPaid > totalDue) {
+        return res.status(400).json({
+          message: 'Payment amount exceeds total due',
+          required: totalDue,
+          provided: totalPaid,
+          excess: totalPaid - totalDue
+        })
+      }
     }
     
     // Use transaction to ensure data consistency
@@ -75,15 +75,37 @@ exports.repayLoan = async (req, res) => {
     
     try {
       // Create repayment record
+      // Determine what to record based on paymentType
+      const isPartial = paymentType && paymentType !== 'full'
+      const interestPaid = paymentType === 'interest' 
+        ? totalPaid 
+        : paymentType === 'both'
+          ? interestData.interestAmount
+          : paymentType === 'principal'
+            ? 0
+            : interestData.interestAmount
+
+      const principalPaid = paymentType === 'principal'
+        ? totalPaid
+        : paymentType === 'both'
+          ? totalPaid - interestData.interestAmount
+          : paymentType === 'interest'
+            ? 0
+            : loan.amount
+
       const repayment = await Repayment.create([{
         loanId: loan._id,
         principalAmount: loan.amount,
         interestAmount: interestData.interestAmount,
-        totalAmount: totalDue,
+        totalAmount: totalPaid,
         payment: {
           cash: payment.cash || 0,
           online: payment.online || 0
         },
+        paymentType: paymentType || 'full',
+        interestPaid,
+        principalPaid,
+        remainingPrincipal: isPartial ? loan.amount - principalPaid : 0,
         daysDifference: interestData.daysDifference
       }], { session })
       
@@ -108,16 +130,20 @@ exports.repayLoan = async (req, res) => {
         }], { session })
       }
       
-      // Update loan status
-      loan.status = 'repaid'
-      await loan.save({ session })
-      
-      // Update item status
-      await Item.updateMany(
-        { _id: { $in: loan.itemIds } },
-        { status: 'released' },
-        { session }
-      )
+      // Update loan — partial payment reduces principal, full payment closes loan
+      if (!isPartial) {
+        loan.status = 'repaid'
+        await loan.save({ session })
+        await Item.updateMany(
+          { _id: { $in: loan.itemIds } },
+          { status: 'released' },
+          { session }
+        )
+      } else if (paymentType === 'principal' || paymentType === 'both') {
+        // Reduce principal for partial principal payment
+        loan.amount = loan.amount - principalPaid
+        await loan.save({ session })
+      }
       
       await session.commitTransaction()
       

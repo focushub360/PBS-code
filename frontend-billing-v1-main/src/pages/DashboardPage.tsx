@@ -24,6 +24,14 @@ import api from "../utils/api";
 import { DashboardStats } from "../types";
 import { colors, themeConfig } from "../theme/colors";
 
+const fetchActiveLoansForOverdue = async () => {
+  try {
+    const response = await api.get("/loans/active");
+    return response.data || [];
+  } catch {
+    return [];
+  }
+};
 const fetchDashboardStats = async (): Promise<DashboardStats> => {
   try {
     // Fetch pawn shop statistics
@@ -79,6 +87,14 @@ const fetchDashboardStats = async (): Promise<DashboardStats> => {
 };
 
 export const DashboardPage = () => {
+  const { data: activeLoans = [] } = useQuery({
+    queryKey: ["active-loans-overdue-check"],
+    queryFn: fetchActiveLoansForOverdue,
+    refetchInterval: 30000,
+  });
+
+  const overdueLoans = activeLoans.filter((l: any) => (l.daysPassed || 0) >= 90);
+  const dueSoonLoans = activeLoans.filter((l: any) => (l.daysPassed || 0) >= 30 && (l.daysPassed || 0) < 90);
   const {
     data: stats,
     isLoading,
@@ -446,6 +462,54 @@ export const DashboardPage = () => {
           })}
         </div>
 
+        {/* Overdue Alert Banner */}
+        {(overdueLoans.length > 0 || dueSoonLoans.length > 0) && (
+          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            {overdueLoans.length > 0 && (
+              <Link
+                to="/loans/active"
+                className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl hover:bg-red-100 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center text-lg">
+                    🔴
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-red-800 dark:text-red-300">
+                      {overdueLoans.length} Loan{overdueLoans.length > 1 ? "s" : ""} Overdue!
+                    </div>
+                    <div className="text-xs text-red-600 dark:text-red-400">
+                      90+ days — Immediate action required
+                    </div>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-red-600" />
+              </Link>
+            )}
+            {dueSoonLoans.length > 0 && (
+              <Link
+                to="/loans/active"
+                className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl hover:bg-yellow-100 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center text-lg">
+                    🟡
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-yellow-800 dark:text-yellow-300">
+                      {dueSoonLoans.length} Loan{dueSoonLoans.length > 1 ? "s" : ""} Due Soon
+                    </div>
+                    <div className="text-xs text-yellow-600 dark:text-yellow-400">
+                      30-90 days — Follow up needed
+                    </div>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-yellow-600" />
+              </Link>
+            )}
+          </div>
+        )}
+        
         {/* Main Content Grid - Scrollable Container */}
         <div className="flex-1 overflow-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">

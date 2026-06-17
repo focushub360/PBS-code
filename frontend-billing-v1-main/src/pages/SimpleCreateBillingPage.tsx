@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { LivePhotoCapture } from "../components/LivePhotoCapture";
 import { InvoiceModal } from "../components/InvoiceModal";
 import { useCurrentInterestRate } from "../hooks/useCurrentInterestRate";
+import { useMetalRates } from "../hooks/useMetalRates";
 import { useFieldArray, useForm } from "react-hook-form";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "react-toastify";
@@ -18,6 +19,7 @@ const createBilling = async (data: BillingCreateRequest) => {
 export default function SimpleCreateBillingPage() {
   const queryClient = useQueryClient();
   const { rate } = useCurrentInterestRate();
+  const { calculateValue } = useMetalRates();
 
   // ── Invoice modal state ────────────────────────────────────
   const [invoiceState, setInvoiceState] = useState<{
@@ -187,6 +189,15 @@ export default function SimpleCreateBillingPage() {
 
   const handleCaratChange = (index: number, caratValue: string) => {
     setValue(`items.${index}.carat`, caratValue);
+    // Auto-calculate estimated value based on master item + carat + weight
+    const masterItem = selectedMasterItems[index];
+    const weight = Number(watch(`items.${index}.weight`)) || 0;
+    if (masterItem?.name && weight > 0) {
+      const autoValue = calculateValue(masterItem.name, caratValue, weight);
+      if (autoValue > 0) {
+        setValue(`items.${index}.estimatedValue`, autoValue as any, { shouldValidate: true });
+      }
+    }
   };
 
   const mutation = useMutation({
@@ -620,11 +631,25 @@ export default function SimpleCreateBillingPage() {
                     <input
                       type="number" step="0.01"
                       className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                      {...register(`items.${index}.weight` as const)}
+                      {...register(`items.${index}.weight` as const, {
+                        onChange: (e) => {
+                          const masterItem = selectedMasterItems[index];
+                          const carat = watch(`items.${index}.carat`);
+                          const weight = Number(e.target.value) || 0;
+                          if (masterItem?.name && carat && weight > 0) {
+                            const autoValue = calculateValue(masterItem.name, carat, weight);
+                            if (autoValue > 0) {
+                              setValue(`items.${index}.estimatedValue`, autoValue as any, { shouldValidate: true });
+                            }
+                          }
+                        },
+                      })}
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs mb-1 dark:text-gray-300">Estimated Value *</label>
+                    <label className="block text-xs mb-1 dark:text-gray-300">
+                      Estimated Value * <span className="text-gray-400 font-normal">(auto-calc, editable)</span>
+                    </label>
                     <input
                       type="number"
                       className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
