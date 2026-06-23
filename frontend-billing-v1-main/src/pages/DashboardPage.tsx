@@ -110,7 +110,7 @@ export const DashboardPage = () => {
 
   if (isLoading) {
     return (
-      <div className="h-screen bg-gray-50 dark:bg-gray-900 p-4 overflow-hidden">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
         <div className="max-w-7xl mx-auto h-full flex flex-col">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
             <div>
