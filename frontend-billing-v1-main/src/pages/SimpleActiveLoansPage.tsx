@@ -193,7 +193,7 @@ export default function SimpleActiveLoansPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
                   {/* Left: Customer */}
                   <div>
-                    <div className="font-medium dark:text-white">
+                    <div className="font-medium text-white">
                       {customer?.name}
                     </div>
                     <div className="text-sm text-gray-600 dark:text-gray-400">
