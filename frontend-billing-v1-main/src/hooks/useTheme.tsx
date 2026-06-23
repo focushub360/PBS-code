@@ -8,15 +8,15 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('admin_theme');
     if (savedTheme) {
       setIsDark(savedTheme === 'dark');
     } else {
-      // Default to light theme
-      setIsDark(false);
+      // Default to dark theme
+      setIsDark(true);
     }
   }, []);
 

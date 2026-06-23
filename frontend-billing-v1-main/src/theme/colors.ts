@@ -33,13 +33,13 @@ export const colors = {
     },
   },
   status: {
-    success: "#00008B", // Use dark blue for success
-    warning: "#1E3A8A", // Use medium dark blue for warning
-    error: "#00008B", // Use dark blue for error
-    info: "#3B82F6", // Use light dark blue for info
-    active: "#00008B", // Dark blue for active status
-    repaid: "#1E3A8A", // Medium blue for repaid status
-    inactive: "#64748B", // Blue-gray for inactive status
+    success: "#60A5FA", // Light blue for success
+    warning: "#93C5FD", // Lighter blue for warning
+    error: "#60A5FA", // Light blue for error
+    info: "#93C5FD", // Lighter blue for info
+    active: "#60A5FA", // Light blue for active status (readable on dark bg)
+    repaid: "#93C5FD", // Lighter blue for repaid status (readable on dark bg)
+    inactive: "#94A3B8", // Light blue-gray for inactive status
   },
 };
 

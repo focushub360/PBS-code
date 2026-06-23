@@ -366,20 +366,14 @@ export const CustomerManagementPage = () => {
               </span>
             </div>
             <div className="flex items-center space-x-2">
-              <Clock
-                className="h-4 w-4"
-                style={{ color: colors.status.active }}
-              />
-              <span className="text-sm" style={{ color: colors.status.active }}>
+              <Clock className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+              <span className="text-sm text-blue-600 dark:text-blue-300">
                 Active: {statusCounts.active || 0}
               </span>
             </div>
             <div className="flex items-center space-x-2">
-              <CheckCircle
-                className="h-4 w-4"
-                style={{ color: colors.status.repaid }}
-              />
-              <span className="text-sm" style={{ color: colors.status.repaid }}>
+              <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-300" />
+              <span className="text-sm text-green-600 dark:text-green-300">
                 Repaid: {statusCounts.repaid || 0}
               </span>
             </div>

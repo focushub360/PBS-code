@@ -25,6 +25,77 @@
   }
 }
 
+/* ─────────────────────────────────────────────────────────
+   GLOBAL DARK THEME OVERRIDE
+   Forces readable text/borders/cards across every app page
+   without editing each page file individually.
+   Targets text-gray-700/800/900 etc which are invisible
+   on the dark navy background.
+───────────────────────────────────────────────────────── */
+
+/* App shell is dark navy now (set in Layout.tsx) */
+body {
+  background-color: #050816;
+}
+
+/* Headings and dark-gray body text → make readable on dark bg */
+h1, h2, h3, h4, h5, h6,
+.text-gray-900,
+.text-gray-800,
+.text-gray-700 {
+  color: #f1f5f9 !important; /* light gray/white */
+}
+
+/* Secondary/muted text → lighter gray instead of dark gray */
+.text-gray-600,
+.text-gray-500 {
+  color: #9ca3af !important;
+}
+
+/* Card / section backgrounds that were white → dark card */
+.bg-white {
+  background-color: #0f1530 !important;
+}
+
+/* Light gray section backgrounds → slightly lighter dark card */
+.bg-gray-50,
+.bg-gray-100 {
+  background-color: #11172e !important;
+}
+
+/* Borders that were light gray → visible subtle border on dark bg */
+.border-gray-200,
+.border-gray-300 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Form inputs, selects, textareas — keep them readable */
+input,
+select,
+textarea {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6b7280 !important;
+}
+
+/* Disabled inputs should still look distinct but readable */
+input:disabled,
+select:disabled,
+textarea:disabled {
+  background-color: #e5e7eb !important;
+  color: #6b7280 !important;
+}
+
+/* Buttons with plain white background + dark text (outline style) */
+button.bg-white {
+  background-color: #1a2142 !important;
+  color: #f1f5f9 !important;
+}
+
 /* Auto-logout warning toast styles */
 .logout-warning-toast {
   background-color: #f59e0b !important;

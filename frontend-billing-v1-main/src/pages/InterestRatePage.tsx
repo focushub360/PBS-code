@@ -190,8 +190,8 @@ export default function InterestRatePage() {
                     className="flex justify-between items-center px-3 py-2 rounded-lg text-sm"
                     style={{ backgroundColor: slabColors[i], border: `1px solid ${slabBorders[i]}` }}
                   >
-                    <span className="text-gray-700 font-medium">Slab {slab} (Month {monthStart}–{monthEnd})</span>
-                    <span className="font-bold text-gray-900">{rate}%</span>
+                    <span className="font-medium" style={{ color: "#1F2937" }}>Slab {slab} (Month {monthStart}–{monthEnd})</span>
+                    <span className="font-bold" style={{ color: "#111827" }}>{rate}%</span>
                   </div>
                 );
               })}
@@ -229,7 +229,7 @@ export default function InterestRatePage() {
                       <tr
                         key={row.month}
                         className={`border-t border-gray-100 dark:border-gray-700 ${
-                          isSlabStart ? "bg-blue-50 dark:bg-blue-900/20" : "hover:bg-gray-50 dark:hover:bg-gray-750"
+                          isSlabStart ? "bg-blue-50 dark:bg-blue-900/20" : "hover:bg-gray-50 dark:hover:bg-gray-700"
                         }`}
                       >
                         <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-white">

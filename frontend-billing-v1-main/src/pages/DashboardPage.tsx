@@ -386,12 +386,12 @@ export const DashboardPage = () => {
 
             <Link
               to="/customers"
-              className="flex flex-col items-center gap-1 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors group"
+              className="flex flex-col items-center gap-1 p-2 bg-teal-50 dark:bg-teal-900/10 rounded-lg hover:bg-teal-100 dark:hover:bg-teal-900/20 transition-colors group"
             >
-              <div className="p-1.5 bg-gray-100 dark:bg-gray-600/50 rounded-lg group-hover:bg-gray-200 dark:group-hover:bg-gray-600/70 transition-colors">
-                <Users className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+              <div className="p-1.5 bg-teal-100 dark:bg-teal-800/20 rounded-lg group-hover:bg-teal-200 dark:group-hover:bg-teal-800/30 transition-colors">
+                <Users className="h-4 w-4 text-teal-600 dark:text-teal-400" />
               </div>
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-300 text-center">
+              <span className="text-xs font-medium text-teal-700 dark:text-teal-300 text-center">
                 Customers
               </span>
             </Link>

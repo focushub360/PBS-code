@@ -324,7 +324,7 @@ export default function SimpleCreateBillingPage() {
 
   const sectionStyle: React.CSSProperties = { borderColor: colors.primary[100] };
   const primaryButtonStyle: React.CSSProperties = { backgroundColor: colors.primary.medium };
-  const outlineButtonStyle: React.CSSProperties = { borderColor: colors.primary[200], color: colors.primary.dark };
+  const outlineButtonStyle: React.CSSProperties = { borderColor: colors.primary[200], color: colors.primary[200] };
 
   const loanAmount = Number(watch("loan.amount")) || 0;
   if (loanAmount > totalEstimated && totalEstimated > 0) {
@@ -368,7 +368,7 @@ export default function SimpleCreateBillingPage() {
             {/* Name + Phone */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">Full Name *</label>
+                <label className="block text-xs mb-1 text-gray-300">Full Name *</label>
                 <input
                   type="text"
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -380,7 +380,7 @@ export default function SimpleCreateBillingPage() {
                 )}
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">Phone *</label>
+                <label className="block text-xs mb-1 text-gray-300">Phone *</label>
                 <input
                   type="tel"
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -399,22 +399,22 @@ export default function SimpleCreateBillingPage() {
             {/* Address */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">Door No *</label>
+                <label className="block text-xs mb-1 text-gray-300">Door No *</label>
                 <input className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   {...register("customer.address.doorNo", { required: "Required" })} />
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">Street *</label>
+                <label className="block text-xs mb-1 text-gray-300">Street *</label>
                 <input className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   {...register("customer.address.street", { required: "Required" })} />
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">Town *</label>
+                <label className="block text-xs mb-1 text-gray-300">Town *</label>
                 <input className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   {...register("customer.address.town", { required: "Required" })} />
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">District *</label>
+                <label className="block text-xs mb-1 text-gray-300">District *</label>
                 <SearchableDistrictDropdown
                   value={watch("customer.address.district") || ""}
                   onChange={(value) => setValue("customer.address.district", value)}
@@ -424,12 +424,12 @@ export default function SimpleCreateBillingPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">Pincode *</label>
+                <label className="block text-xs mb-1 text-gray-300">Pincode *</label>
                 <input className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   {...register("customer.address.pincode", { required: "Required" })} />
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">Nominee *</label>
+                <label className="block text-xs mb-1 text-gray-300">Nominee *</label>
                 <input
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   placeholder="Nominee name"
@@ -451,7 +451,7 @@ export default function SimpleCreateBillingPage() {
 
                 {/* Aadhaar Number */}
                 <div>
-                  <label className="block text-xs mb-1 dark:text-gray-300">Aadhaar Number *</label>
+                  <label className="block text-xs mb-1 text-gray-300">Aadhaar Number *</label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -484,7 +484,7 @@ export default function SimpleCreateBillingPage() {
                 {/* Aadhaar Front + Back side by side */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs mb-1 dark:text-gray-300">Aadhaar Front *</label>
+                    <label className="block text-xs mb-1 text-gray-300">Aadhaar Front *</label>
                     <label className="flex items-center gap-2 px-2 py-1.5 border rounded text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600">
                       <span>🪪</span>
                       <span className="dark:text-gray-300">
@@ -502,7 +502,7 @@ export default function SimpleCreateBillingPage() {
                     <PhotoPreview preview={aadhaarFrontPreview} file={aadhaarFront} label="Aadhaar front" />
                   </div>
                   <div>
-                    <label className="block text-xs mb-1 dark:text-gray-300">Aadhaar Back *</label>
+                    <label className="block text-xs mb-1 text-gray-300">Aadhaar Back *</label>
                     <label className="flex items-center gap-2 px-2 py-1.5 border rounded text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600">
                       <span>🪪</span>
                       <span className="dark:text-gray-300">
@@ -523,7 +523,7 @@ export default function SimpleCreateBillingPage() {
 
                 {/* Other ID Proof — optional */}
                 <div>
-                  <label className="block text-xs mb-1 dark:text-gray-300">
+                  <label className="block text-xs mb-1 text-gray-300">
                     Other ID Proof{" "}
                     <span className="text-gray-400 font-normal">(optional — Voter ID, Passport, DL...)</span>
                   </label>
@@ -585,7 +585,7 @@ export default function SimpleCreateBillingPage() {
                   style={{ borderColor: colors.primary[100] }}
                 >
                   <div className="md:col-span-3">
-                    <label className="block text-xs mb-1 dark:text-gray-300">Master Item</label>
+                    <label className="block text-xs mb-1 text-gray-300">Master Item</label>
                     <select
                       className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       value={selectedMaster?._id || ""}
@@ -599,7 +599,7 @@ export default function SimpleCreateBillingPage() {
                     </select>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs mb-1 dark:text-gray-300">Category</label>
+                    <label className="block text-xs mb-1 text-gray-300">Category</label>
                     <select
                       className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       value={watch(`items.${index}.category`) || ""}
@@ -613,7 +613,7 @@ export default function SimpleCreateBillingPage() {
                     </select>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs mb-1 dark:text-gray-300">Carat</label>
+                    <label className="block text-xs mb-1 text-gray-300">Carat</label>
                     <select
                       className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       value={watch(`items.${index}.carat`) || ""}
@@ -627,7 +627,7 @@ export default function SimpleCreateBillingPage() {
                     </select>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs mb-1 dark:text-gray-300">Weight</label>
+                    <label className="block text-xs mb-1 text-gray-300">Weight</label>
                     <input
                       type="number" step="0.01"
                       className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -647,7 +647,7 @@ export default function SimpleCreateBillingPage() {
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-xs mb-1 dark:text-gray-300">
+                    <label className="block text-xs mb-1 text-gray-300">
                       Estimated Value * <span className="text-gray-400 font-normal">(auto-calc, editable)</span>
                     </label>
                     <input
@@ -681,7 +681,7 @@ export default function SimpleCreateBillingPage() {
             <h2 className="text-base sm:text-lg font-medium dark:text-white">Loan</h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">Amount *</label>
+                <label className="block text-xs mb-1 text-gray-300">Amount *</label>
                 <div className="relative">
                   {!Number(watch("loan.amount")) && totalEstimated > 0 && (
                     <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-gray-400 dark:text-gray-500">
@@ -702,7 +702,7 @@ export default function SimpleCreateBillingPage() {
                 )}
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">Interest Type</label>
+                <label className="block text-xs mb-1 text-gray-300">Interest Type</label>
                 <select
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   {...register("loan.interestType")}
@@ -713,7 +713,7 @@ export default function SimpleCreateBillingPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">Interest %</label>
+                <label className="block text-xs mb-1 text-gray-300">Interest %</label>
                 <input
                   type="number" step="0.01"
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -721,7 +721,7 @@ export default function SimpleCreateBillingPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">Validity (months)</label>
+                <label className="block text-xs mb-1 text-gray-300">Validity (months)</label>
                 <input
                   type="text"
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -739,7 +739,7 @@ export default function SimpleCreateBillingPage() {
             <h2 className="text-base sm:text-lg font-medium dark:text-white">Payment</h2>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">Cash</label>
+                <label className="block text-xs mb-1 text-gray-300">Cash</label>
                 <input
                   type="number"
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -747,7 +747,7 @@ export default function SimpleCreateBillingPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs mb-1 dark:text-gray-300">Online</label>
+                <label className="block text-xs mb-1 text-gray-300">Online</label>
                 <input
                   type="number"
                   className="w-full px-2 py-1.5 border rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"

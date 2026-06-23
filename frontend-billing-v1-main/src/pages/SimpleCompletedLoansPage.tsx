@@ -60,7 +60,7 @@ export default function SimpleCompletedLoansPage() {
 
   const outlineButtonStyle: React.CSSProperties = {
     borderColor: colors.primary[300],
-    color: colors.primary.dark,
+    color: colors.primary[300],
   };
 
   return (
