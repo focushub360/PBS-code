@@ -417,7 +417,7 @@ export const TransactionsPage = () => {
         </div>
       ) : groupedTransactions && groupedTransactions.length > 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x" }}>
             <table className="w-full min-w-[800px]">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>

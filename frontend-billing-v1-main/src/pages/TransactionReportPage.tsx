@@ -939,7 +939,7 @@ const TransactionReportPage = () => {
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto touch-pan-x">
             <table className="w-full min-w-[700px]">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
