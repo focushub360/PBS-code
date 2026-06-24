@@ -202,7 +202,7 @@ export default function InterestRatePage() {
         {/* ── 30-Month Table ── */}
         <div className="lg:col-span-2">
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
               <h2 className="text-base font-semibold text-gray-900 dark:text-white">
                 📅 30-Month Interest Schedule
               </h2>
@@ -212,7 +212,7 @@ export default function InterestRatePage() {
             </div>
 
             <div className="overflow-auto max-h-[600px]">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[600px] text-sm">
                 <thead className="sticky top-0 bg-gray-50 dark:bg-gray-700">
                   <tr>
                     {["Month", "Slab", "Rate %", "Interest (₹)", "Cumulative (₹)", "Status"].map((h) => (
@@ -237,7 +237,7 @@ export default function InterestRatePage() {
                         </td>
                         <td className="px-4 py-2.5">
                           <span
-                            className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                            className="px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap inline-block"
                             style={{ backgroundColor: slabColors[(row.slab - 1) % 10], border: `1px solid ${slabBorders[(row.slab - 1) % 10]}`, color: "#374151" }}
                           >
                             Slab {row.slab}

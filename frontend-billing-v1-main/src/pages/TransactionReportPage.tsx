@@ -867,13 +867,13 @@ const TransactionReportPage = () => {
 
       {/* Transaction List - Compact */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-        <div className="p-2 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+        <div className="p-2 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1.5">
           <h3 className="text-xs font-semibold text-gray-900 dark:text-white">
             Transaction Details ({transactions.length} records)
           </h3>
 
           {/* Summary Stats - Compact Inline */}
-          <div className="flex gap-2 text-xs">
+          <div className="flex flex-wrap gap-2 text-xs">
             <span className="text-green-600 dark:text-green-400 font-medium">
               Billing: ₹{summary.billingAmount.toLocaleString()}
             </span>
@@ -940,7 +940,7 @@ const TransactionReportPage = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[700px]">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
                   <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
