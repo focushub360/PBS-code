@@ -205,7 +205,7 @@ export const TransactionsPage = () => {
   }
 
   return (
-    <div className="space-y-2 max-w-full">
+    <div className="space-y-2 max-w-full overflow-x-hidden">
       {/* Header and Summary in a single row */}
       <div className="flex flex-col md:flex-row gap-2">
         {/* Header */}
