@@ -417,7 +417,38 @@ export const TransactionsPage = () => {
         </div>
       ) : groupedTransactions && groupedTransactions.length > 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-x" }}>
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+            {groupedTransactions.map((groupedTransaction) => (
+              <div key={groupedTransaction._id} className="p-3 space-y-1">
+                <div className="flex justify-between items-start">
+                  <span className="text-xs font-medium text-gray-900 dark:text-white capitalize">
+                    {groupedTransaction.type}
+                  </span>
+                  <span className="text-xs font-semibold text-gray-900 dark:text-white">
+                    ₹{groupedTransaction.totalAmount.toLocaleString()}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {new Date(groupedTransaction.date).toLocaleString()}
+                </div>
+                <div className="text-xs text-gray-700 dark:text-gray-300">
+                  Loan ID: {groupedTransaction.loanId}
+                </div>
+                <div className="text-xs text-gray-700 dark:text-gray-300">
+                  {groupedTransaction.customer.name}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+                  {groupedTransaction.paymentMethods.length > 1
+                    ? `${groupedTransaction.paymentMethods.length} payment methods`
+                    : groupedTransaction.paymentMethods[0].mode}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[800px]">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
