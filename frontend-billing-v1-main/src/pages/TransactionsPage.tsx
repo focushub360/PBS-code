@@ -221,7 +221,7 @@ export const TransactionsPage = () => {
 
         {/* Summary Cards - Inline layout */}
         {summaryLoading ? (
-          <div className="md:w-3/4 grid grid-cols-4 gap-2">
+          <div className="md:w-3/4 grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
@@ -235,7 +235,7 @@ export const TransactionsPage = () => {
             ))}
           </div>
         ) : summary && summary.billing && summary.repayment ? (
-          <div className="md:w-3/4 grid grid-cols-4 gap-2">
+          <div className="md:w-3/4 grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className="bg-white dark:bg-gray-800 rounded-lg p-2 shadow-sm border border-gray-200 dark:border-gray-700">
               <div className="flex items-center">
                 <div className="p-1 bg-green-100 dark:bg-green-900/20 rounded-lg mr-1">
