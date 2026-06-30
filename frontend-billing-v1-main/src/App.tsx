@@ -29,6 +29,8 @@ import TransactionReportPage from "./pages/TransactionReportPage";
 import { ItemManagementPage } from "./pages/ItemManagementPage";
 import { CustomerManagementPage } from "./pages/CustomerManagementPage";
 import { ManagerPage } from "./pages/ManagerPage";
+import { AdminManagementPage } from "./pages/AdminManagementPage";
+import { SuperAdminRoute } from "./components/SuperAdminRoute";
 import { EnhancedFinanceManagementPage } from "./pages/EnhancedFinanceManagementPage";
 import TamilNaduFinanceManagementPage from "./pages/TamilNaduFinanceManagementPage";
 import TamilNaduAuditReportPage from "./pages/TamilNaduAuditReportPage";
@@ -232,6 +234,16 @@ function App() {
                             <ManagerPage />
                           </Layout>
                         </AdminRoute>
+                      }
+                    />
+                    <Route
+                      path="/super-admin/admins"
+                      element={
+                        <SuperAdminRoute>
+                          <Layout>
+                            <AdminManagementPage />
+                          </Layout>
+                        </SuperAdminRoute>
                       }
                     />
 

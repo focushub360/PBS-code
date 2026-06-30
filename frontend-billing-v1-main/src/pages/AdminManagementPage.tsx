@@ -25,14 +25,15 @@ import {
 } from "lucide-react";
 import api from "../utils/api";
 
-interface ManagerFormData {
+interface AdminFormData {
   name: string;
   email: string;
   password: string;
   confirmPassword: string;
   phone?: string;
   department?: string;
-  role: "manager";
+  branch?: string;
+  role: "admin";
 }
 
 interface Manager {
@@ -57,7 +58,7 @@ interface EditManagerData {
 
 // API Functions
 const createManager = async (
-  data: Omit<ManagerFormData, "confirmPassword">
+  data: Omit<AdminFormData, "confirmPassword">
 ) => {
   const response = await api.post("/auth/register", data);
   return response.data;
@@ -67,6 +68,8 @@ const fetchManagers = async (): Promise<Manager[]> => {
   const response = await api.get("/users/managers");
   return response.data;
 };
+
+// We'll filter to role === 'admin' on the frontend (see filteredManagers below)
 
 const updateManager = async (
   id: string,
@@ -90,7 +93,7 @@ const toggleManagerStatus = async (
   return response.data;
 };
 
-export const ManagerPage = () => {
+export const AdminManagementPage = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -114,9 +117,9 @@ export const ManagerPage = () => {
     formState: { errors },
     watch,
     reset,
-  } = useForm<ManagerFormData>({
+  } = useForm<AdminFormData>({
     defaultValues: {
-      role: "manager",
+      role: "admin",
     },
   });
 
@@ -130,11 +133,11 @@ export const ManagerPage = () => {
     queryFn: fetchManagers,
   });
 
-  // Mutation for creating manager
+  // Mutation for creating Admin
   const createManagerMutation = useMutation({
     mutationFn: createManager,
     onSuccess: () => {
-      toast.success("Manager created successfully!");
+      toast.success("Admin created successfully!");
       reset();
       queryClient.invalidateQueries({ queryKey: ["managers"] });
       setActiveTab("list");
@@ -186,7 +189,7 @@ export const ManagerPage = () => {
 
   const password = watch("password");
 
-  const onSubmit = async (data: ManagerFormData) => {
+  const onSubmit = async (data: AdminFormData) => {
     if (data.password !== data.confirmPassword) {
       toast.error("Passwords do not match");
       return;
@@ -229,7 +232,7 @@ export const ManagerPage = () => {
 
   // Filter managers based on search and filters
   const filteredManagers = managers.filter((manager) => {
-    const isManagerRole = manager.role === "manager"; // hide super_admin from this list
+    const isAdminRole = manager.role === "admin"; // only show admins here
     const matchesSearch =
       manager.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       manager.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -241,7 +244,7 @@ export const ManagerPage = () => {
       (filterStatus === "active" && manager.isActive !== false) ||
       (filterStatus === "inactive" && manager.isActive === false);
 
-    return isManagerRole && matchesSearch && matchesRole && matchesStatus;
+    return isAdminRole && matchesSearch && matchesRole && matchesStatus;
   });
 
   const handleEdit = (manager: Manager) => {
@@ -285,10 +288,10 @@ export const ManagerPage = () => {
       <div className="flex items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-            Manager Management
+            Admin Management
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Manage your pawn shop staff members
+            Create and manage branch admins
           </p>
         </div>
       </div>
@@ -306,7 +309,7 @@ export const ManagerPage = () => {
           >
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Manager List ({managers.length})
+              Admin List ({managers.length})
             </div>
           </button>
           <button
@@ -319,7 +322,7 @@ export const ManagerPage = () => {
           >
             <div className="flex items-center gap-2">
               <UserPlus className="h-4 w-4" />
-              Create Manager
+              Create Admin
             </div>
           </button>
         </div>
@@ -394,7 +397,7 @@ export const ManagerPage = () => {
                       className="mt-4 flex items-center gap-2 mx-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       <Plus className="h-4 w-4" />
-                      Create Manager
+                      Create Admin
                     </button>
                   )}
                 </div>
@@ -448,7 +451,7 @@ export const ManagerPage = () => {
                           <button
                             onClick={() => handleDelete(manager)}
                             className="p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900 rounded"
-                            title="Delete Manager"
+                            title="Delete Admin"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -497,7 +500,7 @@ export const ManagerPage = () => {
                     <UserPlus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Create New Manager
+                    Create New Admin
                   </h2>
                 </div>
 
@@ -592,6 +595,23 @@ export const ManagerPage = () => {
                         placeholder="Enter department (optional)"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Branch *
+                    </label>
+                    <input
+                      type="text"
+                      {...register("branch", { required: "Branch is required" })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      placeholder="Enter branch name/location"
+                    />
+                    {errors.branch && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.branch.message}
+                      </p>
+                    )}
                   </div>
 
                   {/* Password Fields */}
@@ -707,7 +727,7 @@ export const ManagerPage = () => {
                       ) : (
                         <>
                           <CheckCircle className="h-4 w-4" />
-                          Create Manager
+                          Create Admin
                         </>
                       )}
                     </button>
@@ -728,7 +748,7 @@ export const ManagerPage = () => {
                 <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Delete Manager
+                Delete Admin
               </h3>
             </div>
             <p className="text-gray-600 dark:text-gray-400 mb-6">

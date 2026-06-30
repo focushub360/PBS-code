@@ -39,7 +39,9 @@ export const Header = () => {
                 BILLING SOFTWARE
               </h1>
               <p className="text-xs text-gray-400 hidden sm:block">
-                {user?.role === "admin"
+                {user?.role === "super_admin"
+                  ? "Super Admin Dashboard"
+                  : user?.role === "admin"
                   ? "Only for Administration Purpose"
                   : "Manager Dashboard"}
               </p>
@@ -115,6 +117,11 @@ export const Header = () => {
               </button>
               {openMenu === "admin" && (
                 <div className="absolute right-0 z-50 mt-1 w-72 bg-[#0f1530] border border-white/10 rounded-md shadow-xl shadow-black/40 p-1">
+                  {user?.role === "super_admin" && (
+                    <NavLink to="/super-admin/admins" className={({ isActive }) => dropdownItemClasses(isActive)}>
+                      Admin Management
+                    </NavLink>
+                  )}
                   <NavLink to="/admin/profile" className={({ isActive }) => dropdownItemClasses(isActive)}>
                     Admin Profile
                   </NavLink>
@@ -162,7 +169,11 @@ export const Header = () => {
                   {user?.email}
                 </p>
                 <p className="text-xs text-gray-400 truncate">
-                  {user?.role === "admin" ? "Administrator" : "Manager"}
+                  {user?.role === "super_admin"
+                    ? "Super Admin"
+                    : user?.role === "admin"
+                    ? "Administrator"
+                    : "Manager"}
                   {user?.branch && ` • Branch: ${user.branch}`}
                 </p>
               </div>

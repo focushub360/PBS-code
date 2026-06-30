@@ -3,11 +3,11 @@ import { Navigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../hooks/useAuth";
 
-interface AdminRouteProps {
+interface SuperAdminRouteProps {
   children: ReactNode;
 }
 
-export const AdminRoute = ({ children }: AdminRouteProps) => {
+export const SuperAdminRoute = ({ children }: SuperAdminRouteProps) => {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
@@ -22,10 +22,9 @@ export const AdminRoute = ({ children }: AdminRouteProps) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (user?.role !== "admin" && user?.role !== "super_admin") {
-    // Show toast notification and redirect managers to dashboard if they try to access admin routes
+  if (user?.role !== "super_admin") {
     useEffect(() => {
-      toast.error("Access denied. Admin privileges required.");
+      toast.error("Access denied. Super Admin privileges required.");
     }, []);
 
     return <Navigate to="/dashboard" replace />;

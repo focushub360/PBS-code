@@ -7,7 +7,7 @@ const generateToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expires
 
 exports.registerAdmin = async (req, res) => {
   try {
-    const { name, email, password, role = 'admin', phone, department } = req.body
+    const { name, email, password, role = 'admin', phone, department, branch } = req.body
     
     // Validate required fields
     if (!name || !email || !password) {
@@ -15,7 +15,7 @@ exports.registerAdmin = async (req, res) => {
     }
     
     // Validate role
-    if (!['admin', 'manager'].includes(role)) {
+    if (!['super_admin', 'admin', 'manager'].includes(role)) {
       return res.status(400).json({ message: 'Invalid role specified' })
     }
     
@@ -39,6 +39,7 @@ exports.registerAdmin = async (req, res) => {
     // Add optional fields if provided
     if (phone) userData.phone = phone
     if (department) userData.department = department
+    if (branch) userData.branch = branch
     
     const user = await User.create(userData)
     
