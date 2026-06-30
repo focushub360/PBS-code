@@ -38,11 +38,11 @@ const corsOptions = {
     const allowedOrigins = [
       'https://billingsoftwarefocus.netlify.app',
       'https://backend-billing-v1.onrender.com',
+      'https://billpage.netlify.app',
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:1000',
       'http://localhost:1001',
-      'https://fdbs.netlify.app',
     ];
     
     // Allow any localhost origin during development
